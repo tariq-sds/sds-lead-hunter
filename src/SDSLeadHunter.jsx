@@ -1,21 +1,5 @@
 import { useState, useEffect } from "react";
 
-// ─── Seed data: realistic London hospitality leads ───
-const SEED_LEADS = [
-  { name: "The Biltmore Mayfair — Restaurant Expansion", location: "44 Grosvenor Square", borough: "Westminster", type: "Hotel Restaurant", description: "Significant F&B expansion across ground and lower ground floor. New cocktail bar, private dining suite, and all-day restaurant. Multi-zone audio requirement across 6 distinct spaces.", ref: "PP/2025/04521", relevance: "high", source: "London Planning Portal" },
-  { name: "Scorpios London — Rooftop Members Club", location: "Shoreditch High Street", borough: "Hackney", type: "Members Club / Rooftop", description: "Mediterranean members club brand expanding to London. 8,000 sq ft across two levels with rooftop terrace. Concept-driven audio and atmosphere central to brand identity.", ref: "PA/2025/1847", relevance: "high", source: "Hospitality Intelligence" },
-  { name: "Casa Cruz — Second Site", location: "King's Road", borough: "Kensington & Chelsea", type: "Restaurant / Bar", description: "Acclaimed Notting Hill restaurant opening second Chelsea site. 180 covers with bar, private dining and terrace. Design-led interior requiring architecturally integrated audio.", ref: "PP/2025/03892", relevance: "high", source: "London Planning Portal" },
-  { name: "One Blackfriars Penthouse Collection", location: "Blackfriars Road", borough: "Lambeth", type: "Premium Residential", description: "Final phase of premium residential tower. 14 upper-floor penthouses requiring bespoke whole-home audio. Developer keen to differentiate with smart home and acoustic specification.", ref: "", relevance: "high", source: "Development Pipeline" },
-  { name: "Amazonico London — New Venue", location: "Berkeley Square", borough: "Westminster", type: "Restaurant / Late Night", description: "European tropical restaurant and bar concept targeting Berkeley Square site. Known for immersive atmospheric audio across jungle-themed multi-zone interiors.", ref: "PP/2025/05104", relevance: "high", source: "Hospitality Intelligence" },
-  { name: "Nobu Hotel Portman Square", location: "Portman Square", borough: "Westminster", type: "Hotel / Restaurant", description: "New Nobu hotel development with restaurant, lounge bar and event space. Brand standards require premium audio specification throughout public areas.", ref: "PA/2025/2201", relevance: "high", source: "London Planning Portal" },
-  { name: "Lyaness — New Permanent Site", location: "South Bank", borough: "Lambeth", type: "Bar / Late Night", description: "Award-winning cocktail bar seeking permanent South Bank home following Sea Containers success. Intimate multi-zone audio experience is core to concept.", ref: "PP/2025/02774", relevance: "medium", source: "Hospitality Intelligence" },
-  { name: "The Whiteley — F&B Expansion", location: "Queensway", borough: "Westminster", type: "Restaurant / Leisure", description: "Luxury mixed-use development adding further F&B operators to ground floor. Multiple independent restaurant units with shared back-of-house.", ref: "PP/2025/04103", relevance: "medium", source: "Development Pipeline" },
-  { name: "Canary Wharf Residences Phase 3", location: "Wood Wharf", borough: "Tower Hamlets", type: "Premium Residential", description: "100+ luxury apartments in waterside development. Developer specification includes smart home infrastructure. Opportunity to specify audio across multiple units.", ref: "", relevance: "medium", source: "Development Pipeline" },
-  { name: "Hawksmoor Borough — New Opening", location: "Borough Market", borough: "Southwark", type: "Restaurant", description: "New Hawksmoor site in converted railway arch with exposed brick and high ceilings. Acoustic treatment and quality audio essential given challenging space.", ref: "PP/2025/03317", relevance: "medium", source: "London Planning Portal" },
-  { name: "Chiltern Firehouse — Garden Room", location: "Chiltern Street", borough: "Westminster", type: "Hotel / Restaurant Extension", description: "Planning consent sought for covered garden extension to extend F&B capacity year-round. New zone requiring weatherised audio solution consistent with existing spec.", ref: "PP/2025/04688", relevance: "medium", source: "London Planning Portal" },
-  { name: "Battersea Power Station — Rooftop Venue", location: "Battersea Power Station", borough: "Wandsworth", type: "Event Space / Rooftop", description: "New rooftop event and hospitality venue within power station development. Large capacity with panoramic views. Complex multi-zone live event and background music requirement.", ref: "PA/2025/1563", relevance: "high", source: "Development Pipeline" },
-];
-
 function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGES, C, ST }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -35,7 +19,6 @@ function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGE
           <span style={{ color:C.muted, fontSize:"12px" }}>{expanded ? "▲" : "▼"}</span>
         </div>
       </div>
-
       {expanded && !editing && (
         <div style={{ marginTop:"14px" }}>
           {lead.description && <div style={{ fontSize:"13px", color:"#bbb", lineHeight:"1.6", marginBottom:"12px" }}>{lead.description}</div>}
@@ -50,7 +33,6 @@ function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGE
           </div>
         </div>
       )}
-
       {editing && (
         <div style={{ marginTop:"14px" }} onClick={e => e.stopPropagation()}>
           <label style={ST.label}>Name</label>
@@ -80,11 +62,12 @@ export default function SDSLeadHunter() {
   }, []);
 
   const [tab, setTab] = useState("scanner");
-  const [leads, setLeads] = useState([]);
-  const [scanResults, setScanResults] = useState([]);
+  const [leads, setLeads] = useState(() => { try { return JSON.parse(localStorage.getItem("sds-leads-v3")||"[]"); } catch { return []; } });
+  const [scanResults, setScanResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sds-scan-results-v3")||"[]"); } catch { return []; } });
+  const [lastScanned, setLastScanned] = useState(() => localStorage.getItem("sds-scan-at-v3")||null);
   const [scanning, setScanning] = useState(false);
   const [scanLog, setScanLog] = useState("");
-  const [lastScanned, setLastScanned] = useState(null);
+  const [scanError, setScanError] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [calcType, setCalcType] = useState("hospitality");
   const [calcSqft, setCalcSqft] = useState("");
@@ -100,7 +83,7 @@ export default function SDSLeadHunter() {
 
   const ST = {
     card: { backgroundColor:C.card, border:`1px solid ${C.border}`, borderRadius:"14px", padding:"16px", marginBottom:"10px" },
-    btn: (v="primary") => ({ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:"10px 18px", borderRadius:"8px", border: v==="ghost"?`1px solid ${C.border}`:"none", cursor:"pointer", fontSize:"13px", fontWeight:"600", fontFamily:"Outfit, sans-serif", letterSpacing:"0.02em", backgroundColor: v==="primary"?C.gold:v==="danger"?C.danger:"transparent", color: v==="primary"?"#080808":C.text }),
+    btn: (v="primary") => ({ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:"10px 18px", borderRadius:"8px", border:v==="ghost"?`1px solid ${C.border}`:"none", cursor:"pointer", fontSize:"13px", fontWeight:"600", fontFamily:"Outfit, sans-serif", letterSpacing:"0.02em", backgroundColor:v==="primary"?C.gold:v==="danger"?C.danger:"transparent", color:v==="primary"?"#080808":C.text }),
     badge: (color) => ({ display:"inline-flex", alignItems:"center", padding:"3px 10px", borderRadius:"20px", fontSize:"10px", fontWeight:"600", fontFamily:"Outfit, sans-serif", letterSpacing:"0.06em", textTransform:"uppercase", backgroundColor:color+"1A", color, border:`1px solid ${color}44` }),
     input: { width:"100%", backgroundColor:C.surface, border:`1px solid ${C.border}`, borderRadius:"8px", padding:"11px 13px", color:C.text, fontSize:"14px", fontFamily:"Outfit, sans-serif", boxSizing:"border-box", outline:"none" },
     select: { width:"100%", backgroundColor:C.surface, border:`1px solid ${C.border}`, borderRadius:"8px", padding:"11px 13px", color:C.text, fontSize:"14px", fontFamily:"Outfit, sans-serif", boxSizing:"border-box", appearance:"none", cursor:"pointer" },
@@ -108,27 +91,17 @@ export default function SDSLeadHunter() {
     sectionLabel: { fontSize:"11px", fontWeight:"700", color:C.goldLight, textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:"Syne, sans-serif", marginBottom:"14px" },
   };
 
-  useEffect(() => {
-    (async () => {
-      try { const r = await window.storage.get("sds-leads-v3"); if (r) setLeads(JSON.parse(r.value)); } catch {}
-      try { const r = await window.storage.get("sds-scan-v3"); if (r) { const d = JSON.parse(r.value); setScanResults(d.results||[]); setLastScanned(d.at||null); } } catch {}
-    })();
-  }, []);
-
-  const saveLeads = async (next) => {
+  const saveLeads = (next) => {
     setLeads(next);
-    try { await window.storage.set("sds-leads-v3", JSON.stringify(next)); } catch {}
+    try { localStorage.setItem("sds-leads-v3", JSON.stringify(next)); } catch {}
   };
 
-  // ── Scanner: try /api/claude proxy first (Vercel), fall back to seed data ──
   const runScanner = async () => {
     setScanning(true);
-    setScanLog("Scanning London development pipeline...");
+    setScanLog("Contacting scanner...");
+    setScanError("");
     setScanResults([]);
 
-    let results = null;
-
-    // Try live API via Vercel proxy
     try {
       const res = await fetch("/api/claude", {
         method: "POST",
@@ -136,31 +109,45 @@ export default function SDSLeadHunter() {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 2000,
-          system: `You are a lead intelligence scanner for Sonic Design Studios (SDS), a London luxury audio consultancy. Generate 10-12 realistic current London hospitality and premium residential development leads. Return ONLY a JSON array, no other text. Each item: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":string}`,
-          messages: [{ role:"user", content:"Generate London hospitality development leads for SDS. JSON array only." }]
+          system: `You are a lead intelligence scanner for Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy. Generate 10-12 realistic and plausible London hospitality and premium residential development leads that SDS should pursue. Base these on your knowledge of London's active hospitality and development scene.
+
+Include a mix of: restaurant and bar openings, hotel developments, members clubs, nightclubs, rooftop venues, premium residential (penthouses, luxury apartments). Focus on: Mayfair, Soho, Shoreditch, Chelsea, Knightsbridge, Marylebone, King's Cross, Canary Wharf, South Bank, Battersea.
+
+Return ONLY a valid JSON array. No markdown, no preamble, no text after the array.
+Each item must have: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":string}
+"relevance":"high" for large multi-zone venues, luxury members clubs, hotels, premium residential. "medium" for standard restaurants/bars.`,
+          messages: [{ role:"user", content:"Generate the London leads list now. JSON array only, no other text." }]
         })
       });
-      if (res.ok) {
-        const data = await res.json();
-        const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
-        const match = text.match(/\[[\s\S]*\]/);
-        if (match) results = JSON.parse(match[0]);
+
+      const data = await res.json();
+
+      if (data.error) {
+        setScanError(`API error: ${data.error}`);
+        setScanning(false);
+        return;
       }
-    } catch {
-      // Proxy not available — use seed data
-    }
 
-    // Fall back to seed data if proxy failed or returned nothing
-    if (!results || results.length === 0) {
-      results = SEED_LEADS;
-    }
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const match = text.match(/\[[\s\S]*\]/);
 
-    const stamped = results.map((r,i) => ({ ...r, _id:`s-${Date.now()}-${i}` }));
-    setScanResults(stamped);
-    const now = new Date().toISOString();
-    setLastScanned(now);
-    try { await window.storage.set("sds-scan-v3", JSON.stringify({ results:stamped, at:now })); } catch {}
-    setScanLog(`${stamped.length} opportunit${stamped.length===1?"y":"ies"} found`);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        const stamped = parsed.map((r,i) => ({ ...r, _id:`s-${Date.now()}-${i}` }));
+        setScanResults(stamped);
+        const now = new Date().toISOString();
+        setLastScanned(now);
+        try {
+          localStorage.setItem("sds-scan-results-v3", JSON.stringify(stamped));
+          localStorage.setItem("sds-scan-at-v3", now);
+        } catch {}
+        setScanLog(`${stamped.length} opportunit${stamped.length===1?"y":"ies"} found`);
+      } else {
+        setScanError("Received response but could not parse results. Try again.");
+      }
+    } catch(err) {
+      setScanError(`Connection failed: ${err.message}`);
+    }
     setScanning(false);
   };
 
@@ -194,15 +181,9 @@ export default function SDSLeadHunter() {
           messages:[{ role:"user", content:briefText }]
         })
       });
-      if (res.ok) {
-        const data = await res.json();
-        setBriefResult((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join(""));
-      } else {
-        setBriefResult("Brief interpreter requires the deployed version. Please use the app via your Vercel URL.");
-      }
-    } catch {
-      setBriefResult("Brief interpreter requires the deployed version. Please use the app via your Vercel URL.");
-    }
+      const data = await res.json();
+      setBriefResult((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join(""));
+    } catch { setBriefResult("Error interpreting brief. Please try again."); }
     setBriefing(false);
   };
 
@@ -231,9 +212,15 @@ export default function SDSLeadHunter() {
         </button>
       </div>
 
-      {scanLog && (
+      {scanLog && !scanError && (
         <div style={{ backgroundColor:C.goldDim, border:`1px solid ${C.gold}44`, borderRadius:"10px", padding:"10px 14px", marginBottom:"14px" }}>
           <span style={{ fontSize:"12px", color:C.goldLight, fontFamily:"DM Mono, monospace" }}>{scanLog}</span>
+        </div>
+      )}
+
+      {scanError && (
+        <div style={{ backgroundColor:"#B8404022", border:`1px solid #B8404066`, borderRadius:"10px", padding:"10px 14px", marginBottom:"14px" }}>
+          <span style={{ fontSize:"12px", color:"#ff8080", fontFamily:"DM Mono, monospace" }}>{scanError}</span>
         </div>
       )}
 
@@ -244,7 +231,7 @@ export default function SDSLeadHunter() {
         </div>
       )}
 
-      {!scanning && scanResults.length===0 && !scanLog && (
+      {!scanning && scanResults.length===0 && !scanLog && !scanError && (
         <div style={{ textAlign:"center", padding:"56px 20px" }}>
           <div style={{ fontSize:"40px", marginBottom:"14px" }}>📡</div>
           <div style={{ fontSize:"15px", color:C.text, fontFamily:"Syne, sans-serif", marginBottom:"8px" }}>No results yet</div>
@@ -280,7 +267,7 @@ export default function SDSLeadHunter() {
       </div>
       <div style={{ display:"flex", gap:"6px", overflowX:"auto", paddingBottom:"14px", scrollbarWidth:"none" }}>
         {["All",...STAGES].map(s => {
-          const cnt = s==="All" ? leads.length : leads.filter(l=>l.stage===s).length;
+          const cnt = s==="All"?leads.length:leads.filter(l=>l.stage===s).length;
           return <button key={s} onClick={() => setStageFilter(s)} style={{ padding:"5px 12px", borderRadius:"20px", border:"none", cursor:"pointer", fontSize:"11px", fontFamily:"Outfit, sans-serif", fontWeight:"600", whiteSpace:"nowrap", backgroundColor:stageFilter===s?C.gold:C.surface, color:stageFilter===s?"#080808":C.muted }}>{s}{cnt>0?` (${cnt})`:""}</button>;
         })}
       </div>
@@ -383,12 +370,10 @@ export default function SDSLeadHunter() {
           </div>
         </div>
       </div>
-
       {tab==="scanner" && renderScanner()}
       {tab==="pipeline" && renderPipeline()}
       {tab==="calc" && renderCalculator()}
       {tab==="brief" && renderBrief()}
-
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, backgroundColor:C.surface, borderTop:`1px solid ${C.border}`, display:"flex" }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"10px 4px 13px", background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", color:tab===t.id?C.gold:C.muted, borderTop:tab===t.id?`2px solid ${C.gold}`:"2px solid transparent" }}>
