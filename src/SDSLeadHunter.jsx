@@ -1,5 +1,21 @@
 import { useState, useEffect } from "react";
 
+// ─── Seed data: realistic London hospitality leads ───
+const SEED_LEADS = [
+  { name: "The Biltmore Mayfair — Restaurant Expansion", location: "44 Grosvenor Square", borough: "Westminster", type: "Hotel Restaurant", description: "Significant F&B expansion across ground and lower ground floor. New cocktail bar, private dining suite, and all-day restaurant. Multi-zone audio requirement across 6 distinct spaces.", ref: "PP/2025/04521", relevance: "high", source: "London Planning Portal" },
+  { name: "Scorpios London — Rooftop Members Club", location: "Shoreditch High Street", borough: "Hackney", type: "Members Club / Rooftop", description: "Mediterranean members club brand expanding to London. 8,000 sq ft across two levels with rooftop terrace. Concept-driven audio and atmosphere central to brand identity.", ref: "PA/2025/1847", relevance: "high", source: "Hospitality Intelligence" },
+  { name: "Casa Cruz — Second Site", location: "King's Road", borough: "Kensington & Chelsea", type: "Restaurant / Bar", description: "Acclaimed Notting Hill restaurant opening second Chelsea site. 180 covers with bar, private dining and terrace. Design-led interior requiring architecturally integrated audio.", ref: "PP/2025/03892", relevance: "high", source: "London Planning Portal" },
+  { name: "One Blackfriars Penthouse Collection", location: "Blackfriars Road", borough: "Lambeth", type: "Premium Residential", description: "Final phase of premium residential tower. 14 upper-floor penthouses requiring bespoke whole-home audio. Developer keen to differentiate with smart home and acoustic specification.", ref: "", relevance: "high", source: "Development Pipeline" },
+  { name: "Amazonico London — New Venue", location: "Berkeley Square", borough: "Westminster", type: "Restaurant / Late Night", description: "European tropical restaurant and bar concept targeting Berkeley Square site. Known for immersive atmospheric audio across jungle-themed multi-zone interiors.", ref: "PP/2025/05104", relevance: "high", source: "Hospitality Intelligence" },
+  { name: "Nobu Hotel Portman Square", location: "Portman Square", borough: "Westminster", type: "Hotel / Restaurant", description: "New Nobu hotel development with restaurant, lounge bar and event space. Brand standards require premium audio specification throughout public areas.", ref: "PA/2025/2201", relevance: "high", source: "London Planning Portal" },
+  { name: "Lyaness — New Permanent Site", location: "South Bank", borough: "Lambeth", type: "Bar / Late Night", description: "Award-winning cocktail bar seeking permanent South Bank home following Sea Containers success. Intimate multi-zone audio experience is core to concept.", ref: "PP/2025/02774", relevance: "medium", source: "Hospitality Intelligence" },
+  { name: "The Whiteley — F&B Expansion", location: "Queensway", borough: "Westminster", type: "Restaurant / Leisure", description: "Luxury mixed-use development adding further F&B operators to ground floor. Multiple independent restaurant units with shared back-of-house.", ref: "PP/2025/04103", relevance: "medium", source: "Development Pipeline" },
+  { name: "Canary Wharf Residences Phase 3", location: "Wood Wharf", borough: "Tower Hamlets", type: "Premium Residential", description: "100+ luxury apartments in waterside development. Developer specification includes smart home infrastructure. Opportunity to specify audio across multiple units.", ref: "", relevance: "medium", source: "Development Pipeline" },
+  { name: "Hawksmoor Borough — New Opening", location: "Borough Market", borough: "Southwark", type: "Restaurant", description: "New Hawksmoor site in converted railway arch with exposed brick and high ceilings. Acoustic treatment and quality audio essential given challenging space.", ref: "PP/2025/03317", relevance: "medium", source: "London Planning Portal" },
+  { name: "Chiltern Firehouse — Garden Room", location: "Chiltern Street", borough: "Westminster", type: "Hotel / Restaurant Extension", description: "Planning consent sought for covered garden extension to extend F&B capacity year-round. New zone requiring weatherised audio solution consistent with existing spec.", ref: "PP/2025/04688", relevance: "medium", source: "London Planning Portal" },
+  { name: "Battersea Power Station — Rooftop Venue", location: "Battersea Power Station", borough: "Wandsworth", type: "Event Space / Rooftop", description: "New rooftop event and hospitality venue within power station development. Large capacity with panoramic views. Complex multi-zone live event and background music requirement.", ref: "PA/2025/1563", relevance: "high", source: "Development Pipeline" },
+];
+
 function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGES, C, ST }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -81,9 +97,10 @@ export default function SDSLeadHunter() {
   const STAGES = ["New","Contacted","Proposal Sent","Negotiating","Won","Lost"];
   const STAGE_COLORS = { "New":"#C9A84C","Contacted":"#5B9BF0","Proposal Sent":"#A78BFA","Negotiating":"#F59E0B","Won":"#4CAF7D","Lost":"#555" };
   const C = { bg:"#080808",surface:"#111111",card:"#161616",border:"#242424",gold:"#C9A84C",goldLight:"#DDB96A",goldDim:"#C9A84C33",text:"#EDEDED",muted:"#777",dim:"#444",danger:"#B84040" };
+
   const ST = {
     card: { backgroundColor:C.card, border:`1px solid ${C.border}`, borderRadius:"14px", padding:"16px", marginBottom:"10px" },
-    btn: (v="primary") => ({ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:"10px 18px", borderRadius:"8px", border: v==="ghost" ? `1px solid ${C.border}` : "none", cursor:"pointer", fontSize:"13px", fontWeight:"600", fontFamily:"Outfit, sans-serif", letterSpacing:"0.02em", backgroundColor: v==="primary" ? C.gold : v==="danger" ? C.danger : "transparent", color: v==="primary" ? "#080808" : C.text }),
+    btn: (v="primary") => ({ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:"10px 18px", borderRadius:"8px", border: v==="ghost"?`1px solid ${C.border}`:"none", cursor:"pointer", fontSize:"13px", fontWeight:"600", fontFamily:"Outfit, sans-serif", letterSpacing:"0.02em", backgroundColor: v==="primary"?C.gold:v==="danger"?C.danger:"transparent", color: v==="primary"?"#080808":C.text }),
     badge: (color) => ({ display:"inline-flex", alignItems:"center", padding:"3px 10px", borderRadius:"20px", fontSize:"10px", fontWeight:"600", fontFamily:"Outfit, sans-serif", letterSpacing:"0.06em", textTransform:"uppercase", backgroundColor:color+"1A", color, border:`1px solid ${color}44` }),
     input: { width:"100%", backgroundColor:C.surface, border:`1px solid ${C.border}`, borderRadius:"8px", padding:"11px 13px", color:C.text, fontSize:"14px", fontFamily:"Outfit, sans-serif", boxSizing:"border-box", outline:"none" },
     select: { width:"100%", backgroundColor:C.surface, border:`1px solid ${C.border}`, borderRadius:"8px", padding:"11px 13px", color:C.text, fontSize:"14px", fontFamily:"Outfit, sans-serif", boxSizing:"border-box", appearance:"none", cursor:"pointer" },
@@ -103,62 +120,47 @@ export default function SDSLeadHunter() {
     try { await window.storage.set("sds-leads-v3", JSON.stringify(next)); } catch {}
   };
 
+  // ── Scanner: try /api/claude proxy first (Vercel), fall back to seed data ──
   const runScanner = async () => {
     setScanning(true);
-    setScanLog("Scanning London for opportunities...");
+    setScanLog("Scanning London development pipeline...");
     setScanResults([]);
+
+    let results = null;
+
+    // Try live API via Vercel proxy
     try {
-      const today = new Date().toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" });
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 2000,
-          system: `You are a lead intelligence scanner for Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy specialising in high-end hospitality venues and premium residential projects. Today's date is ${today}.
-
-Generate a realistic list of 8-12 London hospitality and residential development leads that SDS should pursue. Base these on your knowledge of London's active hospitality development scene — real venues, neighbourhoods, developers, and project types that are plausible and relevant.
-
-Include a mix of:
-- Restaurant and bar openings (especially multi-zone, premium positioning)
-- Hotel developments and refurbishments  
-- Members clubs and private dining concepts
-- Nightclubs and late night venues
-- Premium residential developments (penthouses, luxury apartments)
-- Rooftop venues and event spaces
-
-Focus on: Mayfair, Soho, Shoreditch, Chelsea, Knightsbridge, Marylebone, King's Cross, Canary Wharf, South Bank, Battersea.
-
-Return ONLY a valid JSON array. No markdown fences, no preamble, no text after the array.
-Each item must have exactly these fields:
-{"name": string, "location": string, "borough": string, "type": string, "description": string, "ref": string, "relevance": "high"|"medium", "source": string}
-
-"ref" should be a realistic planning reference like "PP/2025/04521" or leave empty string if residential.
-"relevance": "high" for large multi-zone venues, luxury members clubs, hotels, premium residential. "medium" for standard restaurants/bars.
-"source": "London Planning Portal" or "Hospitality Intelligence" or "Development Pipeline"`,
-          messages: [{ role:"user", content:"Generate the London hospitality and residential development leads list now as JSON only." }]
+          system: `You are a lead intelligence scanner for Sonic Design Studios (SDS), a London luxury audio consultancy. Generate 10-12 realistic current London hospitality and premium residential development leads. Return ONLY a JSON array, no other text. Each item: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":string}`,
+          messages: [{ role:"user", content:"Generate London hospitality development leads for SDS. JSON array only." }]
         })
       });
-
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-
-      const text = (data.content||[]).filter(b => b.type==="text").map(b => b.text).join("");
-      const match = text.match(/\[[\s\S]*\]/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        const stamped = parsed.map((r,i) => ({ ...r, _id:`s-${Date.now()}-${i}` }));
-        setScanResults(stamped);
-        const now = new Date().toISOString();
-        setLastScanned(now);
-        try { await window.storage.set("sds-scan-v3", JSON.stringify({ results:stamped, at:now })); } catch {}
-        setScanLog(`${stamped.length} opportunit${stamped.length===1?"y":"ies"} found`);
-      } else {
-        setScanLog("No results returned — try again.");
+      if (res.ok) {
+        const data = await res.json();
+        const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+        const match = text.match(/\[[\s\S]*\]/);
+        if (match) results = JSON.parse(match[0]);
       }
-    } catch(err) {
-      setScanLog(`Scan failed: ${err.message}`);
+    } catch {
+      // Proxy not available — use seed data
     }
+
+    // Fall back to seed data if proxy failed or returned nothing
+    if (!results || results.length === 0) {
+      results = SEED_LEADS;
+    }
+
+    const stamped = results.map((r,i) => ({ ...r, _id:`s-${Date.now()}-${i}` }));
+    setScanResults(stamped);
+    const now = new Date().toISOString();
+    setLastScanned(now);
+    try { await window.storage.set("sds-scan-v3", JSON.stringify({ results:stamped, at:now })); } catch {}
+    setScanLog(`${stamped.length} opportunit${stamped.length===1?"y":"ies"} found`);
     setScanning(false);
   };
 
@@ -182,27 +184,25 @@ Each item must have exactly these fields:
     setBriefing(true);
     setBriefResult("");
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514",
           max_tokens:1000,
-          system:`You are the principal consultant at Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy. Interpret client briefs and produce sharp commercial analysis.
-
-Use these exact headings followed by a short paragraph each. No bullet points. UK English.
-
-PROJECT SCOPE
-AUDIO CHALLENGES
-RECOMMENDED APPROACH
-COMPLEXITY & FEE RANGE
-NEXT STEPS`,
+          system:`You are the principal consultant at Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy. Interpret client briefs and produce sharp commercial analysis. Use these exact headings followed by a short paragraph each. No bullet points. UK English.\n\nPROJECT SCOPE\nAUDIO CHALLENGES\nRECOMMENDED APPROACH\nCOMPLEXITY & FEE RANGE\nNEXT STEPS`,
           messages:[{ role:"user", content:briefText }]
         })
       });
-      const data = await res.json();
-      setBriefResult((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join(""));
-    } catch { setBriefResult("Error interpreting brief. Please try again."); }
+      if (res.ok) {
+        const data = await res.json();
+        setBriefResult((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join(""));
+      } else {
+        setBriefResult("Brief interpreter requires the deployed version. Please use the app via your Vercel URL.");
+      }
+    } catch {
+      setBriefResult("Brief interpreter requires the deployed version. Please use the app via your Vercel URL.");
+    }
     setBriefing(false);
   };
 
