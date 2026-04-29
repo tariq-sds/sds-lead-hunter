@@ -9,17 +9,22 @@ export default async function handler(req, res) {
   if (!ref) return res.status(400).json({ error: { message: 'ref required' } });
 
   try {
-    // Fetch full application record from PLD
+    // Fetch full application record from PLD using flexible search
     const query = {
       query: {
         bool: {
           must: [
-            { term: { "lpa_app_no.raw": ref } }
+            {
+              query_string: {
+                query: `"${ref}"`,
+                fields: ["lpa_app_no", "lpa_app_no.raw"]
+              }
+            }
           ]
         }
       },
       _source: true,
-      size: 1
+      size: 3
     };
 
     // If borough provided, add filter
@@ -44,13 +49,39 @@ export default async function handler(req, res) {
     const hit = pldData?.hits?.hits?.[0];
 
     if (!hit) {
-      return res.status(404).json({ error: { message: 'Application not found in Planning London Datahub' } });
+      // Try again without borough filter in case of mismatch
+      if (borough) {
+        const retryQuery = {
+          query: { query_string: { query: `"${ref}"`, fields: ["lpa_app_no", "lpa_app_no.raw"] } },
+          _source: true,
+          size: 1
+        };
+        const retryRes = await fetch('https://planningdata.london.gov.uk/api-guest/applications/_search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-AllowRequest': 'be2rmRnt&' },
+          body: JSON.stringify(retryQuery)
+        });
+        const retryData = await retryRes.json();
+        const retryHit = retryData?.hits?.hits?.[0];
+        if (!retryHit) {
+          return res.status(404).json({ error: { message: `Application ${ref} not found. The PLD may not yet have full data for this borough. Try searching the reference directly on the borough planning portal.` } });
+        }
+        const s2 = retryHit._source;
+        return res.status(200).json({ doc: buildDoc(s2, ref, borough) });
+      }
+      return res.status(404).json({ error: { message: `Application ${ref} not found in Planning London Datahub.` } });
     }
 
     const s = hit._source;
+    return res.status(200).json({ doc: buildDoc(s, ref, borough) });
 
-    // Build structured document from all available PLD fields
-    const doc = {
+  } catch (err) {
+    return res.status(500).json({ error: { message: err.message } });
+  }
+}
+
+function buildDoc(s, ref, borough) {
+  return {
       // Identity
       ref: s.lpa_app_no || ref,
       borough: s.lpa_name || borough || '',
@@ -98,10 +129,4 @@ export default async function handler(req, res) {
       // Raw source for any missed fields
       _raw: s
     };
-
-    return res.status(200).json({ doc });
-
-  } catch (err) {
-    return res.status(500).json({ error: { message: err.message } });
-  }
 }
