@@ -1,5 +1,138 @@
 import { useState, useEffect } from "react";
 
+// ─── Full Application Detail Modal ───
+function ApplicationModal({ result, onClose, C }) {
+  const [doc, setDoc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const cacheKey = `sds-app-${result.ref}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) { setDoc(JSON.parse(cached)); setLoading(false); return; }
+    } catch {}
+
+    fetch("/api/application", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: result.ref, borough: result.borough })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setError(data.error.message || "Failed to load"); setLoading(false); return; }
+        setDoc(data.doc);
+        try { localStorage.setItem(cacheKey, JSON.stringify(data.doc)); } catch {}
+        setLoading(false);
+      })
+      .catch(err => { setError(err.message); setLoading(false); });
+  }, [result.ref]);
+
+  const Field = ({ label, value }) => {
+    if (!value && value !== 0) return null;
+    return (
+      <div style={{ marginBottom: "12px" }}>
+        <div style={{ fontSize: "9px", color: "#C9A84C99", fontFamily: "DM Mono, monospace", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "3px" }}>{label}</div>
+        <div style={{ fontSize: "13px", color: "#EDEDED", fontFamily: "Outfit, sans-serif", lineHeight: "1.5" }}>{value}</div>
+      </div>
+    );
+  };
+
+  const Section = ({ title, children }) => (
+    <div style={{ marginBottom: "20px" }}>
+      <div style={{ fontSize: "10px", fontWeight: "700", color: "#DDB96A", fontFamily: "Syne, sans-serif", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid #242424" }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "#000000CC", zIndex: 200, display: "flex", flexDirection: "column" }} onClick={onClose}>
+      <div style={{ backgroundColor: "#111111", flex: 1, overflowY: "auto", marginTop: "48px", borderRadius: "16px 16px 0 0" }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "sticky", top: 0, backgroundColor: "#111111", padding: "16px 18px 12px", borderBottom: "1px solid #242424", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ flex: 1, paddingRight: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#C9A84C", fontFamily: "DM Mono, monospace", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>Application Detail</div>
+            <div style={{ fontSize: "16px", fontWeight: "700", color: "#EDEDED", fontFamily: "Syne, sans-serif", lineHeight: "1.3" }}>{result.name}</div>
+            <div style={{ fontSize: "11px", color: "#777", fontFamily: "DM Mono, monospace", marginTop: "3px" }}>{result.ref}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid #333", borderRadius: "8px", color: "#777", cursor: "pointer", padding: "6px 12px", fontSize: "12px", fontFamily: "Outfit, sans-serif", flexShrink: 0 }}>Close</button>
+        </div>
+        <div style={{ padding: "18px" }}>
+          {loading && (
+            <div style={{ textAlign: "center", padding: "48px 20px" }}>
+              <div style={{ fontSize: "32px", marginBottom: "12px" }}>📋</div>
+              <div style={{ fontSize: "13px", color: "#777" }}>Loading application data...</div>
+            </div>
+          )}
+          {error && (
+            <div style={{ backgroundColor: "#B8404022", border: "1px solid #B8404066", borderRadius: "10px", padding: "14px", color: "#ff8080", fontSize: "13px", fontFamily: "DM Mono, monospace" }}>{error}</div>
+          )}
+          {doc && !loading && (
+            <>
+              <Section title="Site & Application">
+                <Field label="Site Name" value={doc.siteName} />
+                <Field label="Address" value={doc.siteAddress} />
+                <Field label="Borough" value={doc.borough} />
+                <Field label="Ward" value={doc.ward} />
+                <Field label="Postcode" value={doc.postcode} />
+                <Field label="Application Type" value={doc.applicationType} />
+                <Field label="Reference" value={doc.ref} />
+              </Section>
+              <Section title="Description of Works">
+                <div style={{ fontSize: "13px", color: "#bbb", lineHeight: "1.7", fontFamily: "Outfit, sans-serif" }}>{doc.description || "No description available"}</div>
+              </Section>
+              <Section title="Decision">
+                <Field label="Decision" value={doc.decision} />
+                <Field label="Status" value={doc.status} />
+                <Field label="Decision Level" value={doc.decisionLevel} />
+                <Field label="Date Received" value={doc.receivedDate} />
+                <Field label="Date Valid" value={doc.validDate} />
+                <Field label="Committee Date" value={doc.committeeDate} />
+                <Field label="Decision Date" value={doc.decisionDate} />
+                {doc.appealStatus && <Field label="Appeal Status" value={doc.appealStatus} />}
+              </Section>
+              <Section title="Professional Team">
+                {(doc.agentName || doc.agentCompany) ? (
+                  <>
+                    <Field label="Agent / Architect" value={doc.agentCompany || doc.agentName} />
+                    {doc.agentAddress && <Field label="Agent Address" value={doc.agentAddress} />}
+                  </>
+                ) : (
+                  <div style={{ fontSize: "12px", color: "#555", fontFamily: "DM Mono, monospace", fontStyle: "italic" }}>Agent not listed — check drawings for architect details</div>
+                )}
+                {(doc.applicantName || doc.applicantCompany) && (
+                  <>
+                    <div style={{ marginTop: "10px" }} />
+                    <Field label="Applicant" value={doc.applicantCompany || doc.applicantName} />
+                    {doc.applicantAddress && <Field label="Applicant Address" value={doc.applicantAddress} />}
+                  </>
+                )}
+              </Section>
+              <Section title="Development Details">
+                <Field label="Existing Use" value={doc.existingUse} />
+                <Field label="Proposed Use" value={doc.proposedUse} />
+                <Field label="Existing Floorspace" value={doc.floorspaceExisting ? `${doc.floorspaceExisting} sqm` : ""} />
+                <Field label="Proposed Floorspace" value={doc.floorspaceProposed ? `${doc.floorspaceProposed} sqm` : ""} />
+                <Field label="Storeys" value={doc.storeys} />
+                <Field label="Site Area" value={doc.siteArea ? `${doc.siteArea} ha` : ""} />
+                <Field label="Listed Building Grade" value={doc.listedBuilding} />
+                <Field label="Conservation Area" value={doc.conservationArea} />
+              </Section>
+              {(doc.residentialUnitsProposed || doc.residentialUnitsExisting) && (
+                <Section title="Residential">
+                  <Field label="Existing Units" value={doc.residentialUnitsExisting} />
+                  <Field label="Proposed Units" value={doc.residentialUnitsProposed} />
+                </Section>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGES, C, ST }) {
+
 function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGES, C, ST }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -68,6 +201,7 @@ export default function SDSLeadHunter() {
   const [scanning, setScanning] = useState(false);
   const [scanLog, setScanLog] = useState("");
   const [scanError, setScanError] = useState("");
+  const [selectedApplication, setSelectedApplication] = useState(null);
   const [stageFilter, setStageFilter] = useState("All");
   const [calcType, setCalcType] = useState("hospitality");
   const [calcSqft, setCalcSqft] = useState("");
@@ -98,7 +232,7 @@ export default function SDSLeadHunter() {
 
   const runScanner = async () => {
     setScanning(true);
-    setScanLog("Querying London Planning Portal...");
+    setScanLog("Querying recently approved London applications...");
     setScanError("");
     setScanResults([]);
 
@@ -271,7 +405,7 @@ export default function SDSLeadHunter() {
 
             {(r.date || r.status) && (
               <div style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace", marginBottom:"6px" }}>
-                {r.date && <span>VALIDATED {r.date}</span>}
+                {r.date && <span>APPROVED {r.date}</span>}
                 {r.date && r.status && <span>  ·  </span>}
                 {r.status && <span>{r.status.toUpperCase()}</span>}
               </div>
@@ -283,9 +417,16 @@ export default function SDSLeadHunter() {
                 → View full application ↗
               </a>
             )}
-            <button style={{ ...ST.btn("ghost"), fontSize:"12px", padding:"7px 14px", opacity:inPipeline?0.45:1 }} onClick={() => !inPipeline && addToPipeline(r)} disabled={inPipeline}>
-              {inPipeline ? "✓ In Pipeline" : "+ Add to Pipeline"}
-            </button>
+            <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+              <button style={{ ...ST.btn("ghost"), fontSize:"12px", padding:"7px 14px", opacity:inPipeline?0.45:1 }} onClick={() => !inPipeline && addToPipeline(r)} disabled={inPipeline}>
+                {inPipeline ? "✓ In Pipeline" : "+ Add to Pipeline"}
+              </button>
+              {r.ref && (
+                <button style={{ ...ST.btn("ghost"), fontSize:"12px", padding:"7px 14px", borderColor:`${C.gold}44`, color:C.gold }} onClick={() => setSelectedApplication(r)}>
+                  Full Details
+                </button>
+              )}
+            </div>
           </div>
         );
       })}
@@ -407,6 +548,10 @@ export default function SDSLeadHunter() {
       {tab==="pipeline" && renderPipeline()}
       {tab==="calc" && renderCalculator()}
       {tab==="brief" && renderBrief()}
+      {selectedApplication && (
+        <ApplicationModal result={selectedApplication} onClose={() => setSelectedApplication(null)} C={C} />
+      )}
+
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, backgroundColor:C.surface, borderTop:`1px solid ${C.border}`, display:"flex" }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"10px 4px 13px", background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", color:tab===t.id?C.gold:C.muted, borderTop:tab===t.id?`2px solid ${C.gold}`:"2px solid transparent" }}>
