@@ -247,8 +247,42 @@ export default function SDSLeadHunter() {
               <span style={ST.badge(r.relevance==="high"?C.gold:C.muted)}>{r.relevance}</span>
             </div>
             <div style={{ fontSize:"11px", color:C.muted, fontFamily:"DM Mono, monospace", marginBottom:"8px" }}>{[r.location,r.borough,r.type].filter(Boolean).join("  ·  ")}</div>
-            <div style={{ fontSize:"13px", color:"#bbb", lineHeight:"1.6", marginBottom:"12px" }}>{r.description}</div>
-            {r.ref && <div style={{ fontSize:"10px", color:C.dim, fontFamily:"DM Mono, monospace", marginBottom:"10px" }}>REF {r.ref}</div>}
+            <div style={{ fontSize:"13px", color:"#bbb", lineHeight:"1.6", marginBottom:"8px" }}>{r.description}</div>
+
+            {/* Professional team */}
+            {r.team && r.team.length > 0 && (
+              <div style={{ backgroundColor:C.surface, borderRadius:"8px", padding:"10px 12px", marginBottom:"10px", border:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:"9px", color:C.goldLight, fontFamily:"DM Mono, monospace", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"8px" }}>Professional Team</div>
+                {r.team.map((t, i) => (
+                  <div key={i} style={{ marginBottom: i < r.team.length - 1 ? "6px" : "0" }}>
+                    <span style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace" }}>{t.role}: </span>
+                    <span style={{ fontSize:"12px", color:C.text, fontFamily:"Outfit, sans-serif", fontWeight:"500" }}>{t.name}</span>
+                    {t.address && <div style={{ fontSize:"10px", color:C.muted, fontFamily:"Outfit, sans-serif", marginTop:"1px" }}>{t.address}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {r.team && r.team.length === 0 && (
+              <div style={{ fontSize:"10px", color:C.dim, fontFamily:"DM Mono, monospace", marginBottom:"8px", fontStyle:"italic" }}>
+                Team not listed — check application documents for architect details
+              </div>
+            )}
+
+            {(r.date || r.status) && (
+              <div style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace", marginBottom:"6px" }}>
+                {r.date && <span>VALIDATED {r.date}</span>}
+                {r.date && r.status && <span>  ·  </span>}
+                {r.status && <span>{r.status.toUpperCase()}</span>}
+              </div>
+            )}
+            {r.ref && <div style={{ fontSize:"10px", color:C.dim, fontFamily:"DM Mono, monospace", marginBottom:"6px" }}>REF {r.ref}</div>}
+            {r.applicationUrl && (
+              <a href={r.applicationUrl} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize:"10px", color:C.gold, fontFamily:"DM Mono, monospace", marginBottom:"10px", display:"block", textDecoration:"none", opacity:0.8 }}>
+                → View full application ↗
+              </a>
+            )}
             <button style={{ ...ST.btn("ghost"), fontSize:"12px", padding:"7px 14px", opacity:inPipeline?0.45:1 }} onClick={() => !inPipeline && addToPipeline(r)} disabled={inPipeline}>
               {inPipeline ? "✓ In Pipeline" : "+ Add to Pipeline"}
             </button>
