@@ -120,7 +120,15 @@ Each item must have: {"name":string,"location":string,"borough":string,"type":st
         })
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        setScanError(`Proxy error (${res.status}): ${raw.slice(0, 200)}`);
+        setScanning(false);
+        return;
+      }
 
       if (data.error) {
         setScanError(`API error: ${data.error.message || JSON.stringify(data.error)}`);
@@ -181,7 +189,9 @@ Each item must have: {"name":string,"location":string,"borough":string,"type":st
           messages:[{ role:"user", content:briefText }]
         })
       });
-      const data = await res.json();
+      const rawBrief = await res.text();
+      let data;
+      try { data = JSON.parse(rawBrief); } catch { setBriefResult(`Error: ${rawBrief.slice(0,200)}`); setBriefing(false); return; }
       setBriefResult((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join(""));
     } catch { setBriefResult("Error interpreting brief. Please try again."); }
     setBriefing(false);
