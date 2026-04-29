@@ -107,7 +107,7 @@ export default function SDSLeadHunter() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5",
+          model: "claude-sonnet-4-6",
           max_tokens: 2000,
           system: `You are a lead intelligence scanner for Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy. Generate 10-12 realistic and plausible London hospitality and premium residential development leads that SDS should pursue. Base these on your knowledge of London's active hospitality and development scene.
 
@@ -175,7 +175,7 @@ Each item must have: {"name":string,"location":string,"borough":string,"type":st
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({
-          model:"claude-sonnet-4-5",
+          model:"claude-sonnet-4-6",
           max_tokens:1000,
           system:`You are the principal consultant at Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy. Interpret client briefs and produce sharp commercial analysis. Use these exact headings followed by a short paragraph each. No bullet points. UK English.\n\nPROJECT SCOPE\nAUDIO CHALLENGES\nRECOMMENDED APPROACH\nCOMPLEXITY & FEE RANGE\nNEXT STEPS`,
           messages:[{ role:"user", content:briefText }]
