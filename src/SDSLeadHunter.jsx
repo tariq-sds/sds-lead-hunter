@@ -220,6 +220,11 @@ export default function SDSLeadHunter() {
   const [scanError, setScanError] = useState("");
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [stageFilter, setStageFilter] = useState("All");
+  const [pressResults, setPressResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sds-press-v1")||"[]"); } catch { return []; } });
+  const [pressScanning, setPressScanning] = useState(false);
+  const [pressLog, setPressLog] = useState("");
+  const [pressError, setPressError] = useState("");
+  const [lastPressScanned, setLastPressScanned] = useState(() => localStorage.getItem("sds-press-at-v1")||null);
   const [calcType, setCalcType] = useState("hospitality");
   const [calcSqft, setCalcSqft] = useState("");
   const [calcZones, setCalcZones] = useState("1");
@@ -304,6 +309,37 @@ export default function SDSLeadHunter() {
     saveLeads([{ id:`l-${Date.now()}`, name:result.name, location:result.location, borough:result.borough, type:result.type, description:result.description, notes:"", stage:"New", sourceRef:result.ref, addedAt:new Date().toISOString(), source:"scanner" }, ...leads]);
   };
 
+  const addPressToPipeline = (result) => {
+    saveLeads([{ id:`l-${Date.now()}`, name:result.project, location:result.location, type:result.type, description:result.description, notes:`Architect: ${result.architect||'—'}\nInterior Designer: ${result.interiorDesigner||'—'}\nDeveloper: ${result.developer||'—'}\nSource: ${result.sourceUrl||'—'}`, stage:"New", addedAt:new Date().toISOString(), source:"press" }, ...leads]);
+  };
+
+  const runPressScanner = async () => {
+    setPressScanning(true);
+    setPressLog("Scanning Dezeen, The Caterer, Sleeper and trade press...");
+    setPressError("");
+    try {
+      const res = await fetch("/api/press", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { setPressError(`Error: ${raw.slice(0,200)}`); setPressScanning(false); return; }
+      if (data.error) { setPressError(`Error: ${data.error.message || JSON.stringify(data.error)}`); setPressScanning(false); return; }
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        const stamped = parsed.map((r,i) => ({ ...r, _id:`p-${Date.now()}-${i}` }));
+        setPressResults(stamped);
+        const now = new Date().toISOString();
+        setLastPressScanned(now);
+        try { localStorage.setItem("sds-press-v1", JSON.stringify(stamped)); localStorage.setItem("sds-press-at-v1", now); } catch {}
+        setPressLog(`${stamped.length} project${stamped.length===1?"":"s"} found`);
+      } else {
+        setPressError("No results returned — try again.");
+      }
+    } catch(err) { setPressError(`Failed: ${err.message}`); }
+    setPressScanning(false);
+  };
+
   const calcFees = () => {
     const sqft = parseFloat(calcSqft)||0;
     if (!sqft) return null;
@@ -343,6 +379,7 @@ export default function SDSLeadHunter() {
   const Icon = ({ id, size=20 }) => {
     const icons = {
       scanner: <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>,
+      press: <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/></svg>,
       pipeline: <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>,
       calc: <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h4"/><path d="M14 14h2v4h-2zM8 14h2v1H8zM8 17h2v1H8z"/></svg>,
       brief: <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>,
@@ -548,7 +585,102 @@ export default function SDSLeadHunter() {
     </div>
   );
 
-  const TABS = [{id:"scanner",label:"Scanner"},{id:"pipeline",label:"Pipeline"},{id:"calc",label:"Calculator"},{id:"brief",label:"Brief"}];
+  const renderPress = () => (
+    <div style={{ padding:"16px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"16px" }}>
+        <div>
+          <div style={ST.sectionLabel}>Press Monitor</div>
+          {lastPressScanned && <div style={{ fontSize:"11px", color:C.muted, fontFamily:"DM Mono, monospace", marginTop:"-8px", marginBottom:"4px" }}>Last scan: {new Date(lastPressScanned).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} {new Date(lastPressScanned).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
+        </div>
+        <button style={{ ...ST.btn("primary"), opacity:pressScanning?0.6:1 }} onClick={runPressScanner} disabled={pressScanning}>
+          {pressScanning ? "Scanning..." : "Scan Press"}
+        </button>
+      </div>
+
+      {pressLog && !pressError && (
+        <div style={{ backgroundColor:C.goldDim, border:`1px solid ${C.gold}44`, borderRadius:"10px", padding:"10px 14px", marginBottom:"14px" }}>
+          <span style={{ fontSize:"12px", color:C.goldLight, fontFamily:"DM Mono, monospace" }}>{pressLog}</span>
+        </div>
+      )}
+      {pressError && (
+        <div style={{ backgroundColor:"#B8404022", border:`1px solid #B8404066`, borderRadius:"10px", padding:"10px 14px", marginBottom:"14px" }}>
+          <span style={{ fontSize:"12px", color:"#ff8080", fontFamily:"DM Mono, monospace" }}>{pressError}</span>
+        </div>
+      )}
+
+      {pressScanning && (
+        <div style={{ textAlign:"center", padding:"56px 20px" }}>
+          <div style={{ fontSize:"36px", marginBottom:"14px" }}>📰</div>
+          <div style={{ fontSize:"13px", color:C.muted }}>Scanning Dezeen, The Caterer, Sleeper, Big Hospitality...</div>
+          <div style={{ fontSize:"11px", color:C.dim, marginTop:"8px", fontFamily:"DM Mono, monospace" }}>This takes 30-60 seconds</div>
+        </div>
+      )}
+
+      {!pressScanning && pressResults.length===0 && !pressLog && (
+        <div style={{ textAlign:"center", padding:"56px 20px" }}>
+          <div style={{ fontSize:"40px", marginBottom:"14px" }}>📰</div>
+          <div style={{ fontSize:"15px", color:C.text, fontFamily:"Syne, sans-serif", marginBottom:"8px" }}>No results yet</div>
+          <div style={{ fontSize:"13px", color:C.muted, marginBottom:"8px" }}>Scans Dezeen, The Caterer, Big Hospitality, Sleeper and Architizer for London project announcements with named architects and designers</div>
+        </div>
+      )}
+
+      {pressResults.map(r => (
+        <div key={r._id} style={{ ...ST.card, borderLeft:`3px solid ${r.relevance==="high"?C.gold:C.dim}` }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"8px" }}>
+            <div style={{ fontWeight:"700", fontSize:"15px", fontFamily:"Syne, sans-serif", flex:1, paddingRight:"10px", lineHeight:"1.3" }}>{r.project}</div>
+            <span style={ST.badge(r.relevance==="high"?C.gold:C.muted)}>{r.relevance}</span>
+          </div>
+
+          <div style={{ fontSize:"11px", color:C.muted, fontFamily:"DM Mono, monospace", marginBottom:"8px" }}>
+            {[r.location, r.type].filter(Boolean).join("  ·  ")}
+          </div>
+
+          {r.description && <div style={{ fontSize:"13px", color:"#bbb", lineHeight:"1.6", marginBottom:"12px" }}>{r.description}</div>}
+
+          {/* Design Team */}
+          {(r.architect || r.interiorDesigner || r.developer) && (
+            <div style={{ backgroundColor:C.surface, borderRadius:"8px", padding:"10px 12px", marginBottom:"10px", border:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:"9px", color:C.goldLight, fontFamily:"DM Mono, monospace", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"8px" }}>Design Team</div>
+              {r.architect && (
+                <div style={{ marginBottom:"5px" }}>
+                  <span style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace" }}>Architect: </span>
+                  <span style={{ fontSize:"13px", color:C.text, fontFamily:"Outfit, sans-serif", fontWeight:"600" }}>{r.architect}</span>
+                </div>
+              )}
+              {r.interiorDesigner && (
+                <div style={{ marginBottom:"5px" }}>
+                  <span style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace" }}>Interior Designer: </span>
+                  <span style={{ fontSize:"13px", color:C.text, fontFamily:"Outfit, sans-serif", fontWeight:"600" }}>{r.interiorDesigner}</span>
+                </div>
+              )}
+              {r.developer && (
+                <div>
+                  <span style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace" }}>Developer / Operator: </span>
+                  <span style={{ fontSize:"13px", color:C.text, fontFamily:"Outfit, sans-serif", fontWeight:"500" }}>{r.developer}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {r.sourceDate && <div style={{ fontSize:"10px", color:C.muted, fontFamily:"DM Mono, monospace", marginBottom:"6px" }}>{r.sourceDate}</div>}
+
+          <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+            <button style={{ ...ST.btn("ghost"), fontSize:"12px", padding:"7px 14px" }} onClick={() => addPressToPipeline(r)}>
+              + Add to Pipeline
+            </button>
+            {r.sourceUrl && (
+              <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer"
+                style={{ ...ST.btn("ghost"), fontSize:"12px", padding:"7px 14px", textDecoration:"none", borderColor:`${C.gold}44`, color:C.gold }}>
+                Read Article ↗
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const TABS = [{id:"scanner",label:"Planning"},{id:"press",label:"Press"},{id:"pipeline",label:"Pipeline"},{id:"calc",label:"Fees"},{id:"brief",label:"Brief"}];
 
   return (
     <div style={{ backgroundColor:C.bg, minHeight:"100vh", color:C.text, fontFamily:"Outfit, system-ui, sans-serif", paddingBottom:"76px" }}>
@@ -562,6 +694,7 @@ export default function SDSLeadHunter() {
         </div>
       </div>
       {tab==="scanner" && renderScanner()}
+      {tab==="press" && renderPress()}
       {tab==="pipeline" && renderPipeline()}
       {tab==="calc" && renderCalculator()}
       {tab==="brief" && renderBrief()}
