@@ -3,9 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
-    "api/claude.js": {
-      "maxDuration": 30
-    }
+    "api/claude.js": { "maxDuration": 30 },
+    "api/scan.js": { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
