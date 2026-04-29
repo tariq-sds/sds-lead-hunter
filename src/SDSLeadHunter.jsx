@@ -108,15 +108,9 @@ export default function SDSLeadHunter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
-          max_tokens: 2000,
-          system: `You are a lead intelligence scanner for Sonic Design Studios (SDS), a London-based luxury architectural audio consultancy. Generate 10-12 realistic and plausible London hospitality and premium residential development leads that SDS should pursue. Base these on your knowledge of London's active hospitality and development scene.
-
-Include a mix of: restaurant and bar openings, hotel developments, members clubs, nightclubs, rooftop venues, premium residential (penthouses, luxury apartments). Focus on: Mayfair, Soho, Shoreditch, Chelsea, Knightsbridge, Marylebone, King's Cross, Canary Wharf, South Bank, Battersea.
-
-Return ONLY a valid JSON array. No markdown, no preamble, no text after the array.
-Each item must have: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":string}
-"relevance":"high" for large multi-zone venues, luxury members clubs, hotels, premium residential. "medium" for standard restaurants/bars.`,
-          messages: [{ role:"user", content:"Generate the London leads list now. JSON array only, no other text." }]
+          max_tokens: 1200,
+          system: `You are a lead scanner for Sonic Design Studios, a London luxury audio consultancy. Generate exactly 6 plausible London hospitality/residential development leads. Return ONLY a JSON array, no other text. Each item: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":string}. "high" = large venues, members clubs, hotels, premium residential. "medium" = restaurants/bars.`,
+          messages: [{ role:"user", content:"Generate 6 London leads. JSON array only." }]
         })
       });
 
