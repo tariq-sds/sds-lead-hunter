@@ -132,8 +132,6 @@ function ApplicationModal({ result, onClose, C }) {
 }
 
 function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGES, C, ST }) {
-
-function LeadCard({ lead, onUpdateStage, onDelete, onUpdate, STAGE_COLORS, STAGES, C, ST }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [ed, setEd] = useState({ ...lead });
