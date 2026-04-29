@@ -41,7 +41,17 @@ export default async function handler(req, res) {
                 fields: ["development_description", "site_name"]
               }
             },
-            { range: { valid_date: { gte: dateFrom } } }
+            {
+              // Only recently decided applications
+              range: { decision_date: { gte: dateFrom } }
+            },
+            {
+              // Only approved/granted decisions
+              query_string: {
+                query: "Approved OR Granted OR \"Grant Permission\" OR \"Prior Approval Required and Approved\" OR \"Prior Approval Not Required\" OR \"No Objection\"",
+                fields: ["decision"]
+              }
+            }
           ],
           filter: [{
             terms: {
@@ -62,7 +72,7 @@ export default async function handler(req, res) {
         "agent_company", "applicant_company"
       ],
       size: 50,
-      sort: [{ valid_date: { order: "desc" } }]
+      sort: [{ decision_date: { order: "desc" } }]  // Most recently approved first
     };
 
     const pldRes = await fetch('https://planningdata.london.gov.uk/api-guest/applications/_search', {
@@ -126,7 +136,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
-        system: `You are a lead analyst for Sonic Design Studios (SDS), a London luxury architectural audio consultancy. Select and format the 8-12 most relevant planning applications for SDS from the list provided.
+        system: `You are a lead analyst for Sonic Design Studios (SDS), a London luxury architectural audio consultancy. Select and format the 8-12 most relevant RECENTLY APPROVED planning applications for SDS from the list provided. These are greenlit projects — ideal for immediate outreach to the design team.
 
 Prioritise: full planning applications for new/refurbished restaurants, bars, hotels, members clubs, nightclubs, event spaces, rooftop venues, large residential developments.
 Deprioritise: minor works, pure signage, small single-room extensions, office/retail change of use.
@@ -142,7 +152,7 @@ Each item:
   "description": string (VERBATIM actualDescription from source — do not paraphrase),
   "ref": string (exact ref),
   "relevance": "high"|"medium",
-  "date": string (validDate),
+  "date": string (decision_date — the approval date),
   "status": string,
   "applicationUrl": string (exact applicationUrl from source),
   "team": array (exact team array from source — include all entries, empty array if none)
