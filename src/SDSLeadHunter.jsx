@@ -98,20 +98,15 @@ export default function SDSLeadHunter() {
 
   const runScanner = async () => {
     setScanning(true);
-    setScanLog("Contacting scanner...");
+    setScanLog("Querying London Planning Portal...");
     setScanError("");
     setScanResults([]);
 
     try {
-      const res = await fetch("/api/claude", {
+      const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1200,
-          system: `You are a lead scanner for Sonic Design Studios, a London luxury audio consultancy. Generate exactly 6 plausible London hospitality/residential development leads. Return ONLY a JSON array, no other text. Each item: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":string}. "high" = large venues, members clubs, hotels, premium residential. "medium" = restaurants/bars.`,
-          messages: [{ role:"user", content:"Generate 6 London leads. JSON array only." }]
-        })
+        body: JSON.stringify({})
       });
 
       const raw = await res.text();
