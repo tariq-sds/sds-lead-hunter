@@ -9,10 +9,27 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY not set' } });
 
   try {
-    // Step 1: Query the Planning London Datahub for recent hospitality applications
     const today = new Date();
     const ninetyDaysAgo = new Date(today - 90 * 24 * 60 * 60 * 1000);
     const dateFrom = `${String(ninetyDaysAgo.getDate()).padStart(2,'0')}/${String(ninetyDaysAgo.getMonth()+1).padStart(2,'0')}/${ninetyDaysAgo.getFullYear()}`;
+
+    // Direct application search URLs by borough
+    const buildApplicationUrl = (borough, ref) => {
+      const encodedRef = encodeURIComponent(ref);
+      const portals = {
+        'Westminster': `https://publicaccess.westminster.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'City of London': `https://www.planning2.cityoflondon.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'Hackney': `https://planningapps.hackney.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'Tower Hamlets': `https://development.towerhamlets.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'Kensington and Chelsea': `https://www.rbkc.gov.uk/planning-and-building-control/planning/search-planning-applications?query=${encodedRef}`,
+        'Camden': `https://planningonline.camden.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'Islington': `https://www.islington.gov.uk/planning/planning-applications/planning-application-search?reference=${encodedRef}`,
+        'Lambeth': `https://planning.lambeth.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'Southwark': `https://planning.southwark.gov.uk/online-applications/search.do?action=simple&searchType=Application&searchText=${encodedRef}`,
+        'Wandsworth': `https://planning2.wandsworth.gov.uk/planningcase/search?caseNo=${encodedRef}`,
+      };
+      return portals[borough] || `https://planningdata.london.gov.uk`;
+    };
 
     const pldQuery = {
       query: {
@@ -20,35 +37,31 @@ export default async function handler(req, res) {
           must: [
             {
               query_string: {
-                query: "restaurant OR bar OR hotel OR \"members club\" OR nightclub OR \"rooftop\" OR \"food and beverage\" OR \"F&B\" OR \"drinking establishment\" OR \"sui generis\" OR \"leisure\" OR \"live music\" OR \"event space\" OR \"private dining\"",
-                fields: ["development_description", "site_name", "lpa_app_no"]
+                query: "restaurant OR bar OR hotel OR \"members club\" OR nightclub OR rooftop OR \"food and beverage\" OR \"F&B\" OR \"drinking establishment\" OR \"leisure\" OR \"live music\" OR \"event space\" OR \"private dining\" OR cocktail OR café OR brasserie OR \"public house\" OR \"wine bar\" OR \"spa\" OR \"gym\"",
+                fields: ["development_description", "site_name"]
               }
             },
-            {
-              range: {
-                valid_date: { gte: dateFrom }
-              }
-            }
+            { range: { valid_date: { gte: dateFrom } } }
           ],
-          filter: [
-            {
-              terms: {
-                "lpa_name.raw": [
-                  "Westminster", "Hackney", "Tower Hamlets",
-                  "Kensington and Chelsea", "Camden", "Islington",
-                  "Lambeth", "Southwark", "Wandsworth", "City of London"
-                ]
-              }
+          filter: [{
+            terms: {
+              "lpa_name.raw": [
+                "Westminster", "Hackney", "Tower Hamlets",
+                "Kensington and Chelsea", "Camden", "Islington",
+                "Lambeth", "Southwark", "Wandsworth", "City of London"
+              ]
             }
-          ]
+          }]
         }
       },
       _source: [
         "lpa_name", "lpa_app_no", "valid_date", "decision_date",
         "development_description", "site_address", "application_type",
-        "development_type", "site_name", "status"
+        "development_type", "site_name", "status", "decision",
+        "agent_name", "agent_address", "applicant_name", "applicant_address",
+        "agent_company", "applicant_company"
       ],
-      size: 30,
+      size: 50,
       sort: [{ valid_date: { order: "desc" } }]
     };
 
@@ -68,21 +81,40 @@ export default async function handler(req, res) {
 
     const pldData = await pldRes.json();
     const hits = pldData?.hits?.hits || [];
-
     if (hits.length === 0) {
       return res.status(200).json({ content: [{ type: 'text', text: '[]' }] });
     }
 
-    // Step 2: Pass raw PLD results to Claude to filter and format for SDS
-    const rawLeads = hits.map(h => ({
-      ref: h._source.lpa_app_no || '',
-      borough: h._source.lpa_name || '',
-      address: h._source.site_address || h._source.site_name || '',
-      description: h._source.development_description || '',
-      type: h._source.application_type || h._source.development_type || '',
-      date: h._source.valid_date || '',
-      status: h._source.status || ''
-    }));
+    // Exclude pure signage/advertisement applications
+    const excludeSuffixes = ['ADVT', 'ADFULL', 'ADV', 'TCA', 'HAPP', 'PNO'];
+    const filtered = hits.filter(h => {
+      const ref = (h._source.lpa_app_no || '').toUpperCase();
+      return !excludeSuffixes.some(t => ref.endsWith('/' + t) || ref.includes('/' + t + '/'));
+    });
+
+    const rawLeads = (filtered.length > 0 ? filtered : hits).slice(0, 35).map(h => {
+      const s = h._source;
+      // Build professional team from available PLD fields
+      const team = [];
+      if (s.agent_company) team.push({ role: 'Agent/Planning', name: s.agent_company, address: s.agent_address || '' });
+      else if (s.agent_name) team.push({ role: 'Agent/Planning', name: s.agent_name, address: s.agent_address || '' });
+      if (s.applicant_company) team.push({ role: 'Applicant', name: s.applicant_company, address: s.applicant_address || '' });
+      else if (s.applicant_name) team.push({ role: 'Applicant', name: s.applicant_name, address: s.applicant_address || '' });
+
+      return {
+        ref: s.lpa_app_no || '',
+        borough: s.lpa_name || '',
+        address: s.site_address || s.site_name || '',
+        siteName: s.site_name || '',
+        actualDescription: s.development_description || '',
+        applicationType: s.application_type || s.development_type || '',
+        validDate: s.valid_date || '',
+        status: s.status || '',
+        decision: s.decision || '',
+        team,
+        applicationUrl: buildApplicationUrl(s.lpa_name, s.lpa_app_no || '')
+      };
+    });
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -93,20 +125,31 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
-        system: `You are a lead intelligence analyst for Sonic Design Studios (SDS), a London luxury architectural audio consultancy specialising in high-end hospitality venues and premium residential.
+        max_tokens: 2000,
+        system: `You are a lead analyst for Sonic Design Studios (SDS), a London luxury architectural audio consultancy. Select and format the 8-12 most relevant planning applications for SDS from the list provided.
 
-You will receive raw planning application data from the London Planning Portal. Your job is to:
-1. Filter for applications relevant to SDS — hospitality venues (restaurants, bars, hotels, nightclubs, members clubs, rooftop venues, event spaces, private dining) and premium residential
-2. Exclude minor works, small extensions, signage, residential conversions, offices, retail
-3. Format the best 6-10 results as a JSON array
+Prioritise: full planning applications for new/refurbished restaurants, bars, hotels, members clubs, nightclubs, event spaces, rooftop venues, large residential developments.
+Deprioritise: minor works, pure signage, small single-room extensions, office/retail change of use.
 
-Return ONLY a valid JSON array. No markdown, no preamble.
-Each item: {"name":string,"location":string,"borough":string,"type":string,"description":string,"ref":string,"relevance":"high"|"medium","source":"London Planning Portal"}
-"name" = venue/site name or short description. "location" = street address. "relevance":"high" for large/luxury multi-zone venues, hotels, members clubs. "medium" for standard restaurants/bars.`,
+Return ONLY a valid JSON array. No markdown, no preamble. Use ONLY data from the source — do not fabricate anything.
+
+Each item:
+{
+  "name": string (site name or first meaningful part of address),
+  "location": string (full address),
+  "borough": string,
+  "type": string (concise venue type),
+  "description": string (VERBATIM actualDescription from source — do not paraphrase),
+  "ref": string (exact ref),
+  "relevance": "high"|"medium",
+  "date": string (validDate),
+  "status": string,
+  "applicationUrl": string (exact applicationUrl from source),
+  "team": array (exact team array from source — include all entries, empty array if none)
+}`,
         messages: [{
           role: 'user',
-          content: `Filter these real London planning applications for SDS relevance and return as JSON:\n\n${JSON.stringify(rawLeads, null, 2)}`
+          content: `Select the best SDS leads from these real London planning applications:\n\n${JSON.stringify(rawLeads, null, 2)}`
         }]
       })
     });
