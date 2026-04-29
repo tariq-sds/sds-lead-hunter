@@ -86,47 +86,57 @@ function buildDoc(s, ref, borough) {
       ref: s.lpa_app_no || ref,
       borough: s.lpa_name || borough || '',
       // Site
-      siteName: s.site_name || '',
-      siteAddress: s.site_address || '',
-      postcode: s.postcode || '',
-      ward: s.ward_name || s.ward || '',
+      siteName: s.site_name || s.site_name_address || '',
+      siteAddress: s.site_address || s.address || s.full_address || '',
+      postcode: s.postcode || s.site_postcode || '',
+      ward: s.ward_name || s.ward || s.electoral_ward || '',
+      parish: s.parish || '',
       // Application
-      applicationType: s.application_type || s.development_type || '',
+      applicationType: s.application_type || s.app_type || s.development_type || s.application_category || '',
       applicationCategory: s.application_category || '',
-      description: s.development_description || '',
+      // Description — check all known PLD field names
+      description: s.development_description || s.description || s.proposal || s.app_description || s.work_description || s.planning_portal_description || '',
       // Dates
-      receivedDate: s.received_date || '',
-      validDate: s.valid_date || '',
-      committeeDate: s.committee_date || '',
-      decisionDate: s.decision_date || '',
+      receivedDate: s.received_date || s.date_received || '',
+      validDate: s.valid_date || s.date_valid || s.validation_date || '',
+      committeeDate: s.committee_date || s.date_committee || '',
+      decisionDate: s.decision_date || s.date_decision || s.decided_date || '',
+      targetDate: s.target_date || s.expiry_date || '',
       // Decision
-      decision: s.decision || '',
-      status: s.status || s.application_status || '',
-      decisionLevel: s.decision_level || '',
-      // Applicant
-      applicantName: s.applicant_name || s.applicant_company || '',
+      decision: s.decision || s.decision_type || s.outcome || '',
+      status: s.status || s.application_status || s.case_status || '',
+      decisionLevel: s.decision_level || s.delegated_or_committee || '',
+      // Applicant — check all variations
+      applicantName: s.applicant_name || s.applicant || '',
       applicantAddress: s.applicant_address || '',
-      applicantCompany: s.applicant_company || '',
-      // Agent
-      agentName: s.agent_name || s.agent_company || '',
+      applicantCompany: s.applicant_company || s.applicant_organisation || '',
+      // Agent — check all variations
+      agentName: s.agent_name || s.agent || '',
       agentAddress: s.agent_address || '',
-      agentCompany: s.agent_company || '',
+      agentCompany: s.agent_company || s.agent_organisation || s.agent_firm || '',
+      agentPhone: s.agent_phone || s.agent_telephone || '',
+      agentEmail: s.agent_email || '',
       // Development details
-      existingUse: s.existing_land_use || s.existing_use || '',
-      proposedUse: s.proposed_land_use || s.proposed_use || '',
-      floorspaceExisting: s.existing_floorspace || s.total_existing_floorspace || '',
-      floorspaceProposed: s.proposed_floorspace || s.total_proposed_floorspace || '',
-      storeys: s.no_storeys || s.storeys || '',
-      siteArea: s.site_area || '',
+      existingUse: s.existing_land_use || s.existing_use || s.current_use || '',
+      proposedUse: s.proposed_land_use || s.proposed_use || s.use_class || '',
+      floorspaceExisting: s.existing_floorspace || s.total_existing_floorspace || s.existing_gross_floorspace || '',
+      floorspaceProposed: s.proposed_floorspace || s.total_proposed_floorspace || s.proposed_gross_floorspace || '',
+      netFloorspace: s.net_floorspace || s.net_additional_floorspace || '',
+      storeys: s.no_storeys || s.storeys || s.number_of_storeys || s.floors || '',
+      siteArea: s.site_area || s.site_area_ha || '',
+      height: s.height || s.max_height || '',
       // Residential
-      residentialUnitsProposed: s.total_proposed_residential_units || s.residential_units_proposed || '',
-      residentialUnitsExisting: s.total_existing_residential_units || s.residential_units_existing || '',
-      // Other
-      listedBuilding: s.listed_building_grade || '',
-      conservationArea: s.conservation_area || '',
+      residentialUnitsProposed: s.total_proposed_residential_units || s.residential_units_proposed || s.units_proposed || '',
+      residentialUnitsExisting: s.total_existing_residential_units || s.residential_units_existing || s.units_existing || '',
+      affordableUnits: s.affordable_units || s.affordable_housing_units || '',
+      // Heritage
+      listedBuilding: s.listed_building_grade || s.listed_building || '',
+      conservationArea: s.conservation_area || s.conservation_area_name || '',
+      heritageAsset: s.heritage_asset || '',
+      // Appeal
       appealStatus: s.appeal_status || '',
       appealDecision: s.appeal_decision || '',
-      // Raw source for any missed fields
+      // All raw fields — expose everything for display
       _raw: s
     };
 }
