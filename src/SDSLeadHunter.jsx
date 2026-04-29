@@ -95,6 +95,8 @@ function ApplicationModal({ result, onClose, C }) {
                   <>
                     <Field label="Agent / Architect" value={doc.agentCompany || doc.agentName} />
                     {doc.agentAddress && <Field label="Agent Address" value={doc.agentAddress} />}
+                    {doc.agentPhone && <Field label="Agent Phone" value={doc.agentPhone} />}
+                    {doc.agentEmail && <Field label="Agent Email" value={doc.agentEmail} />}
                   </>
                 ) : (
                   <div style={{ fontSize: "12px", color: "#555", fontFamily: "DM Mono, monospace", fontStyle: "italic" }}>Agent not listed — check drawings for architect details</div>
@@ -112,17 +114,34 @@ function ApplicationModal({ result, onClose, C }) {
                 <Field label="Proposed Use" value={doc.proposedUse} />
                 <Field label="Existing Floorspace" value={doc.floorspaceExisting ? `${doc.floorspaceExisting} sqm` : ""} />
                 <Field label="Proposed Floorspace" value={doc.floorspaceProposed ? `${doc.floorspaceProposed} sqm` : ""} />
+                <Field label="Net Floorspace Change" value={doc.netFloorspace ? `${doc.netFloorspace} sqm` : ""} />
                 <Field label="Storeys" value={doc.storeys} />
+                <Field label="Height" value={doc.height} />
                 <Field label="Site Area" value={doc.siteArea ? `${doc.siteArea} ha` : ""} />
                 <Field label="Listed Building Grade" value={doc.listedBuilding} />
                 <Field label="Conservation Area" value={doc.conservationArea} />
+                <Field label="Heritage Asset" value={doc.heritageAsset} />
               </Section>
               {(doc.residentialUnitsProposed || doc.residentialUnitsExisting) && (
                 <Section title="Residential">
                   <Field label="Existing Units" value={doc.residentialUnitsExisting} />
                   <Field label="Proposed Units" value={doc.residentialUnitsProposed} />
+                  <Field label="Affordable Units" value={doc.affordableUnits} />
                 </Section>
               )}
+              {/* Raw data — show all non-empty fields from PLD not already displayed */}
+              {doc._raw && (() => {
+                const knownKeys = new Set(['lpa_app_no','lpa_name','site_name','site_address','postcode','ward_name','ward','application_type','development_type','application_category','development_description','description','proposal','received_date','valid_date','committee_date','decision_date','decision','status','application_status','decision_level','applicant_name','applicant_address','applicant_company','agent_name','agent_address','agent_company','agent_email','agent_phone','existing_land_use','existing_use','proposed_land_use','proposed_use','existing_floorspace','total_existing_floorspace','proposed_floorspace','total_proposed_floorspace','no_storeys','storeys','site_area','total_proposed_residential_units','residential_units_proposed','total_existing_residential_units','listed_building_grade','conservation_area','appeal_status','appeal_decision']);
+                const extras = Object.entries(doc._raw).filter(([k, v]) => !knownKeys.has(k) && v !== null && v !== undefined && v !== '' && !Array.isArray(v) && typeof v !== 'object');
+                if (extras.length === 0) return null;
+                return (
+                  <Section title="Additional Data">
+                    {extras.map(([k, v]) => (
+                      <Field key={k} label={k.replace(/_/g, ' ')} value={String(v)} />
+                    ))}
+                  </Section>
+                );
+              })()}
             </>
           )}
         </div>
