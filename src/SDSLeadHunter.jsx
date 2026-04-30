@@ -315,7 +315,7 @@ export default function SDSLeadHunter() {
 
   const runPressScanner = async () => {
     setPressScanning(true);
-    setPressLog("Scanning Dezeen, The Caterer, Sleeper and trade press...");
+    setPressLog("Searching London hospitality projects...");
     setPressError("");
     try {
       const res = await fetch("/api/press", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -324,17 +324,20 @@ export default function SDSLeadHunter() {
       try { data = JSON.parse(raw); } catch { setPressError(`Error: ${raw.slice(0,200)}`); setPressScanning(false); return; }
       if (data.error) { setPressError(`Error: ${data.error.message || JSON.stringify(data.error)}`); setPressScanning(false); return; }
       const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
-      const match = text.match(/\[[\s\S]*\]/);
+      const clean = text.replace(/```json\s*/gi,'').replace(/```\s*/gi,'').trim();
+      const match = clean.match(/\[[\s\S]*\]/);
       if (match) {
-        const parsed = JSON.parse(match[0]);
-        const stamped = parsed.map((r,i) => ({ ...r, _id:`p-${Date.now()}-${i}` }));
-        setPressResults(stamped);
-        const now = new Date().toISOString();
-        setLastPressScanned(now);
-        try { localStorage.setItem("sds-press-v1", JSON.stringify(stamped)); localStorage.setItem("sds-press-at-v1", now); } catch {}
-        setPressLog(`${stamped.length} project${stamped.length===1?"":"s"} found`);
+        try {
+          const parsed = JSON.parse(match[0]);
+          const stamped = parsed.map((r,i) => ({ ...r, _id:`p-${Date.now()}-${i}` }));
+          setPressResults(stamped);
+          const now = new Date().toISOString();
+          setLastPressScanned(now);
+          try { localStorage.setItem("sds-press-v1", JSON.stringify(stamped)); localStorage.setItem("sds-press-at-v1", now); } catch {}
+          setPressLog(`${stamped.length} project${stamped.length===1?"":"s"} found`);
+        } catch(parseErr) { setPressError(`Parse error: ${parseErr.message}. Raw: ${clean.slice(0,100)}`); }
       } else {
-        setPressError("No results returned — try again.");
+        setPressError(`No JSON found in response. Got: ${clean.slice(0,150)}`);
       }
     } catch(err) { setPressError(`Failed: ${err.message}`); }
     setPressScanning(false);
