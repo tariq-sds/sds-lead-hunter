@@ -9,71 +9,47 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY not set' } });
 
   try {
-    // Fetch content from known press sources directly
-    const sources = [
-      { url: 'https://www.dezeen.com/tag/restaurants/', name: 'Dezeen' },
-      { url: 'https://www.dezeen.com/tag/hotels/', name: 'Dezeen Hotels' },
-      { url: 'https://www.thecaterer.com/news/openings', name: 'The Caterer' },
-      { url: 'https://www.bighospitality.co.uk/tag/new-openings', name: 'Big Hospitality' },
-    ];
-
-    const delay = ms => new Promise(r => setTimeout(r, ms));
-    const pageContents = [];
-
-    for (let i = 0; i < sources.length; i++) {
-      if (i > 0) await delay(500);
-      try {
-        const r = await fetch(sources[i].url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SDS-LeadHunter/1.0)' },
-          signal: AbortSignal.timeout(8000)
-        });
-        if (r.ok) {
-          const html = await r.text();
-          // Strip HTML tags and extract readable text, limit size
-          const text = html
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .slice(0, 3000);
-          pageContents.push(`=== ${sources[i].name} ===\n${text}`);
-        }
-      } catch { /* skip failed fetches */ }
-    }
-
-    if (pageContents.length === 0) {
-      // Fallback: ask Claude to use its knowledge of recent London hospitality projects
-      const fallbackRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1500,
-          system: `You are a lead analyst for Sonic Design Studios, a London luxury audio consultancy. Return a JSON array of 8-10 real London hospitality and residential projects from 2024-2026 that you know about, where an architect or interior designer is named. No markdown, no preamble. Each item: {"project":string,"type":string,"location":string,"architect":string,"interiorDesigner":string,"developer":string,"description":string,"sourceUrl":string,"sourceDate":string,"relevance":"high"|"medium"}`,
-          messages: [{ role: 'user', content: 'List recent London restaurant, bar, hotel, members club and luxury residential projects with named design teams. JSON array only.' }]
-        })
-      });
-      const fallbackData = await fallbackRes.json();
-      return res.status(200).json(fallbackData);
-    }
-
-    // Pass fetched content to Claude for extraction
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
-        system: `You are a lead analyst for Sonic Design Studios, a London luxury audio consultancy. Extract London hospitality and residential projects from the press content provided. Focus on projects with named architects or interior designers. Return ONLY a JSON array — no markdown, no preamble. Each item: {"project":string,"type":string,"location":string,"architect":string,"interiorDesigner":string,"developer":string,"description":string,"sourceUrl":string,"sourceDate":string,"relevance":"high"|"medium"}. Use empty string if unknown. Only include London projects.`,
+        max_tokens: 2000,
+        system: `You are a lead analyst for Sonic Design Studios (SDS), a London luxury architectural audio consultancy. Draw on your knowledge of London's hospitality and residential design scene to list real, known projects from 2023-2026.
+
+Return ONLY a raw JSON array. No markdown fences, no preamble, no text after the array.
+
+Each item must be a real project you have knowledge of:
+[
+  {
+    "project": "venue or development name",
+    "type": "e.g. New Restaurant, Hotel Refurbishment, Members Club, Luxury Residential",
+    "location": "area or address in London",
+    "architect": "architecture firm name or empty string",
+    "interiorDesigner": "interior design firm name or empty string",
+    "developer": "developer or operator name or empty string",
+    "description": "1-2 sentence description of the project",
+    "sourceUrl": "URL of a Dezeen/Caterer/Sleeper article about this project if known, else empty string",
+    "sourceDate": "approximate date if known, else empty string",
+    "relevance": "high or medium"
+  }
+]
+
+Mark "high" for: large multi-zone venues, luxury hotels, members clubs, significant residential.
+Only include London projects. Only include projects where at least one of architect, interiorDesigner, or developer is known.`,
         messages: [{
           role: 'user',
-          content: `Extract all London hospitality/residential projects with design team details from this press content:\n\n${pageContents.join('\n\n')}`
+          content: 'List 10-12 real London hospitality and premium residential projects from 2023-2026 with named architects or interior designers. Prioritise: restaurants, bars, hotels, members clubs, nightclubs, rooftop venues, luxury apartments. Return the JSON array only.'
         }]
       })
     });
 
-    const claudeData = await claudeRes.json();
-    return res.status(200).json(claudeData);
+    const data = await claudeRes.json();
+    return res.status(200).json(data);
 
   } catch (err) {
     return res.status(500).json({ error: { message: err.message } });
