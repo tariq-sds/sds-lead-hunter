@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 4000,
         system: `You are a lead analyst for Sonic Design Studios (SDS), a London luxury architectural audio consultancy. Draw on your knowledge of London's hospitality and residential design scene to list real, known projects from 2023-2026.
 
 Return ONLY a raw JSON array. No markdown fences, no preamble, no text after the array.
@@ -43,7 +43,7 @@ Mark "high" for: large multi-zone venues, luxury hotels, members clubs, signific
 Only include London projects. Only include projects where at least one of architect, interiorDesigner, or developer is known.`,
         messages: [{
           role: 'user',
-          content: 'List 10-12 real London hospitality and premium residential projects from 2023-2026 with named architects or interior designers. Prioritise: restaurants, bars, hotels, members clubs, nightclubs, rooftop venues, luxury apartments. Return the JSON array only.'
+          content: 'List 8 real London hospitality and premium residential projects from 2023-2026 with named architects or interior designers. Prioritise: restaurants, bars, hotels, members clubs, nightclubs, rooftop venues, luxury apartments. Return the JSON array only — no other text.'
         }]
       })
     });
